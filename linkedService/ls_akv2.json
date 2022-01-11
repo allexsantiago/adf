@@ -1,0 +1,12 @@
+{
+	"name": "ls_akv2",
+	"type": "Microsoft.DataFactory/factories/linkedservices",
+	"properties": {
+		"description": "busca senhas",
+		"annotations": [],
+		"type": "AzureKeyVault",
+		"typeProperties": {
+			"baseUrl": "https://akv-alex-lab.vault.azure.net/"
+		}
+	}
+}

@@ -1,0 +1,9 @@
+{
+	"name": "DataFactoryRGroup",
+	"location": "eastus2",
+	"identity": {
+		"type": "SystemAssigned",
+		"principalId": "bb536cb9-37c9-4070-90d4-d1b0f7becc3f",
+		"tenantId": "777b9aa2-87fb-40e4-af0b-c764a972b3b8"
+	}
+}

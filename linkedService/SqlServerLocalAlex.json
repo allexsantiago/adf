@@ -1,0 +1,24 @@
+{
+	"name": "SqlServerLocalAlex",
+	"type": "Microsoft.DataFactory/factories/linkedservices",
+	"properties": {
+		"description": "Conecta no sql local da maquina",
+		"annotations": [],
+		"type": "SqlServer",
+		"typeProperties": {
+			"connectionString": "Integrated Security=False;Data Source=ALEX-NOTE\\SQLEXPRESS;Initial Catalog=ADVENTUREWORKSDW2019;User ID=sa",
+			"password": {
+				"type": "AzureKeyVaultSecret",
+				"store": {
+					"referenceName": "ls_akv2",
+					"type": "LinkedServiceReference"
+				},
+				"secretName": "pwd-localsqldb"
+			}
+		},
+		"connectVia": {
+			"referenceName": "integrationRuntime1",
+			"type": "IntegrationRuntimeReference"
+		}
+	}
+}
