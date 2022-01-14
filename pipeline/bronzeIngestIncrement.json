@@ -1,5 +1,5 @@
 {
-	"name": "bronzeIngestFull",
+	"name": "bronzeIngestIncrement",
 	"properties": {
 		"activities": [
 			{
@@ -17,7 +17,7 @@
 				"typeProperties": {
 					"source": {
 						"type": "SqlServerSource",
-						"sqlReaderQuery": "select a.tableName\n\t  ,a.tableSchema\n\t  ,b.ingestType\nfrom controller.ingestTables a (nolock)\njoin controller.ingestType   b (nolock) on a.idIngestType = b.idIngestType\nwhere 1 = 1\nand b.idIngestType = 1",
+						"sqlReaderQuery": "select a.tableName\n\t  ,a.tableSchema\n\t  ,b.ingestType\nfrom controller.ingestTables a (nolock)\njoin controller.ingestType   b (nolock) on a.idIngestType = b.idIngestType\nwhere 1 = 1\nand b.idIngestType = 2",
 						"queryTimeout": "02:00:00",
 						"partitionOption": "None"
 					},
@@ -152,9 +152,9 @@
 										},
 										"type": "String"
 									},
-									"idadlsLayer": {
-										"value": "1",
-										"type": "Int32"
+									"adlsLayer": {
+										"value": "bronze",
+										"type": "String"
 									},
 									"ingestedRows": {
 										"value": {
