@@ -1,0 +1,158 @@
+{
+	"name": "ingest_bronze_copy1",
+	"properties": {
+		"activities": [
+			{
+				"name": "ingest_DimProductCategory",
+				"description": "carga full da tabela ingest_DimProductCategory",
+				"type": "Copy",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "SqlServerSource",
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"sink": {
+						"type": "ParquetSink",
+						"storeSettings": {
+							"type": "AzureBlobFSWriteSettings"
+						},
+						"formatSettings": {
+							"type": "ParquetWriteSettings"
+						}
+					},
+					"enableStaging": false,
+					"translator": {
+						"type": "TabularTranslator",
+						"mappings": [
+							{
+								"source": {
+									"name": "ProductCategoryKey",
+									"type": "Int32",
+									"physicalType": "int"
+								},
+								"sink": {
+									"name": "ProductCategoryKey",
+									"type": "Int32",
+									"physicalType": "INT_32"
+								}
+							},
+							{
+								"source": {
+									"name": "ProductCategoryAlternateKey",
+									"type": "Int32",
+									"physicalType": "int"
+								},
+								"sink": {
+									"name": "ProductCategoryAlternateKey",
+									"type": "Int32",
+									"physicalType": "INT_32"
+								}
+							},
+							{
+								"source": {
+									"name": "EnglishProductCategoryName",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "EnglishProductCategoryName",
+									"type": "String",
+									"physicalType": "UTF8"
+								}
+							},
+							{
+								"source": {
+									"name": "SpanishProductCategoryName",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "SpanishProductCategoryName",
+									"type": "String",
+									"physicalType": "UTF8"
+								}
+							},
+							{
+								"source": {
+									"name": "FrenchProductCategoryName",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "FrenchProductCategoryName",
+									"type": "String",
+									"physicalType": "UTF8"
+								}
+							}
+						],
+						"typeConversion": true,
+						"typeConversionSettings": {
+							"allowDataTruncation": true,
+							"treatBooleanAsNumber": false
+						}
+					}
+				},
+				"inputs": [
+					{
+						"referenceName": "ds_sqldb",
+						"type": "DatasetReference",
+						"parameters": {
+							"schema": "dbo",
+							"tbName": "DimProductCategory"
+						}
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "ds_adls_parquet",
+						"type": "DatasetReference",
+						"parameters": {
+							"container": "bronze",
+							"path": "AdventureWorks/full/dbo",
+							"fileName": "DimProductCategory"
+						}
+					}
+				]
+			},
+			{
+				"name": "Set variable1",
+				"type": "SetVariable",
+				"dependsOn": [
+					{
+						"activity": "ingest_DimProductCategory",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "start",
+					"value": {
+						"value": "@formatDateTime(convertFromUtc(activity('ingest_DimProductCategory').output.executionDetails[0].start, 'E. South America Standard Time'),'yyyy-MM-dd hh:mm')",
+						"type": "Expression"
+					}
+				}
+			}
+		],
+		"variables": {
+			"start": {
+				"type": "String"
+			}
+		},
+		"folder": {
+			"name": "Ingest Full/AdventureWorks"
+		},
+		"annotations": []
+	}
+}

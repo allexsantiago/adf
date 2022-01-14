@@ -1,0 +1,213 @@
+{
+	"name": "ingest_bronze",
+	"properties": {
+		"activities": [
+			{
+				"name": "ingest_DimProductCategory",
+				"description": "carga full da tabela ingest_DimProductCategory",
+				"type": "Copy",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "SqlServerSource",
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"sink": {
+						"type": "ParquetSink",
+						"storeSettings": {
+							"type": "AzureBlobFSWriteSettings"
+						},
+						"formatSettings": {
+							"type": "ParquetWriteSettings"
+						}
+					},
+					"enableStaging": false,
+					"translator": {
+						"type": "TabularTranslator",
+						"mappings": [
+							{
+								"source": {
+									"name": "ProductCategoryKey",
+									"type": "Int32",
+									"physicalType": "int"
+								},
+								"sink": {
+									"name": "ProductCategoryKey",
+									"type": "Int32",
+									"physicalType": "INT_32"
+								}
+							},
+							{
+								"source": {
+									"name": "ProductCategoryAlternateKey",
+									"type": "Int32",
+									"physicalType": "int"
+								},
+								"sink": {
+									"name": "ProductCategoryAlternateKey",
+									"type": "Int32",
+									"physicalType": "INT_32"
+								}
+							},
+							{
+								"source": {
+									"name": "EnglishProductCategoryName",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "EnglishProductCategoryName",
+									"type": "String",
+									"physicalType": "UTF8"
+								}
+							},
+							{
+								"source": {
+									"name": "SpanishProductCategoryName",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "SpanishProductCategoryName",
+									"type": "String",
+									"physicalType": "UTF8"
+								}
+							},
+							{
+								"source": {
+									"name": "FrenchProductCategoryName",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "FrenchProductCategoryName",
+									"type": "String",
+									"physicalType": "UTF8"
+								}
+							}
+						],
+						"typeConversion": true,
+						"typeConversionSettings": {
+							"allowDataTruncation": true,
+							"treatBooleanAsNumber": false
+						}
+					}
+				},
+				"inputs": [
+					{
+						"referenceName": "ds_sqldb",
+						"type": "DatasetReference",
+						"parameters": {
+							"schema": "dbo",
+							"tbName": "DimProductCategory"
+						}
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "ds_adls_parquet",
+						"type": "DatasetReference",
+						"parameters": {
+							"container": "bronze",
+							"path": "AdventureWorks/full/dbo",
+							"fileName": "DimProductCategory"
+						}
+					}
+				]
+			},
+			{
+				"name": "Stored procedure1",
+				"type": "SqlServerStoredProcedure",
+				"dependsOn": [
+					{
+						"activity": "ingest_DimProductCategory",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"storedProcedureName": "[controller].[pr_update_waterMark]",
+					"storedProcedureParameters": {
+						"adfPipeline": {
+							"value": {
+								"value": "@pipeline().Pipeline",
+								"type": "Expression"
+							},
+							"type": "String"
+						},
+						"ingestEndDateTime": {
+							"value": {
+								"value": "@formatDateTime(addSeconds(convertTimeZone(activity('ingest_DimProductCategory').output.executionDetails[0].start, 'UTC', 'E. South America Standard Time'),activity('ingest_DimProductCategory').output.copyDuration), 'yyyy-MM-dd hh:mm:ss')",
+								"type": "Expression"
+							},
+							"type": "Datetime"
+						},
+						"ingestedRows": {
+							"value": {
+								"value": "@activity('ingest_DimProductCategory').output.rowsCopied",
+								"type": "Expression"
+							},
+							"type": "Int32"
+						},
+						"ingestStartDateTime": {
+							"value": {
+								"value": "@formatDateTime(convertFromUtc(activity('ingest_DimProductCategory').output.executionDetails[0].start, 'E. South America Standard Time'),'yyyy-MM-dd hh:mm:ss')",
+								"type": "Expression"
+							},
+							"type": "DateTime"
+						},
+						"ingestType": {
+							"value": "Full",
+							"type": "String"
+						},
+						"mostRecentDateTime": {
+							"value": null,
+							"type": "DateTime"
+						},
+						"tableName": {
+							"value": "dbo.DimProductCategory",
+							"type": "String"
+						}
+					}
+				},
+				"linkedServiceName": {
+					"referenceName": "SqlServerLocalAlex",
+					"type": "LinkedServiceReference"
+				}
+			}
+		],
+		"variables": {
+			"ingestRows": {
+				"type": "String"
+			},
+			"tableName": {
+				"type": "String"
+			},
+			"Start": {
+				"type": "String"
+			}
+		},
+		"folder": {
+			"name": "Ingest Full/AdventureWorks"
+		},
+		"annotations": []
+	}
+}
