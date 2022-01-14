@@ -3,9 +3,8 @@
 	"properties": {
 		"activities": [
 			{
-				"name": "ingest_DimProductCategory",
-				"description": "carga full da tabela ingest_DimProductCategory",
-				"type": "Copy",
+				"name": "Lookup1",
+				"type": "Lookup",
 				"dependsOn": [],
 				"policy": {
 					"timeout": "7.00:00:00",
@@ -18,118 +17,27 @@
 				"typeProperties": {
 					"source": {
 						"type": "SqlServerSource",
+						"sqlReaderQuery": "select distinct tabelas from controller.tabelas",
 						"queryTimeout": "02:00:00",
 						"partitionOption": "None"
 					},
-					"sink": {
-						"type": "ParquetSink",
-						"storeSettings": {
-							"type": "AzureBlobFSWriteSettings"
-						},
-						"formatSettings": {
-							"type": "ParquetWriteSettings"
-						}
-					},
-					"enableStaging": false,
-					"translator": {
-						"type": "TabularTranslator",
-						"mappings": [
-							{
-								"source": {
-									"name": "ProductCategoryKey",
-									"type": "Int32",
-									"physicalType": "int"
-								},
-								"sink": {
-									"name": "ProductCategoryKey",
-									"type": "Int32",
-									"physicalType": "INT_32"
-								}
-							},
-							{
-								"source": {
-									"name": "ProductCategoryAlternateKey",
-									"type": "Int32",
-									"physicalType": "int"
-								},
-								"sink": {
-									"name": "ProductCategoryAlternateKey",
-									"type": "Int32",
-									"physicalType": "INT_32"
-								}
-							},
-							{
-								"source": {
-									"name": "EnglishProductCategoryName",
-									"type": "String",
-									"physicalType": "nvarchar"
-								},
-								"sink": {
-									"name": "EnglishProductCategoryName",
-									"type": "String",
-									"physicalType": "UTF8"
-								}
-							},
-							{
-								"source": {
-									"name": "SpanishProductCategoryName",
-									"type": "String",
-									"physicalType": "nvarchar"
-								},
-								"sink": {
-									"name": "SpanishProductCategoryName",
-									"type": "String",
-									"physicalType": "UTF8"
-								}
-							},
-							{
-								"source": {
-									"name": "FrenchProductCategoryName",
-									"type": "String",
-									"physicalType": "nvarchar"
-								},
-								"sink": {
-									"name": "FrenchProductCategoryName",
-									"type": "String",
-									"physicalType": "UTF8"
-								}
-							}
-						],
-						"typeConversion": true,
-						"typeConversionSettings": {
-							"allowDataTruncation": true,
-							"treatBooleanAsNumber": false
-						}
-					}
-				},
-				"inputs": [
-					{
+					"dataset": {
 						"referenceName": "ds_sqldb",
 						"type": "DatasetReference",
 						"parameters": {
-							"schema": "dbo",
-							"tbName": "DimProductCategory"
+							"schema": "controller",
+							"tbName": "tabelas"
 						}
-					}
-				],
-				"outputs": [
-					{
-						"referenceName": "ds_adls_parquet",
-						"type": "DatasetReference",
-						"parameters": {
-							"container": "bronze",
-							"path": "AdventureWorks/full/dbo",
-							"fileName": "DimProductCategory"
-						}
-					}
-				]
+					},
+					"firstRowOnly": false
+				}
 			},
 			{
-				"name": "Set variable1",
-				"type": "SetVariable",
+				"name": "ForEach1",
+				"type": "ForEach",
 				"dependsOn": [
 					{
-						"activity": "ingest_DimProductCategory",
+						"activity": "Lookup1",
 						"dependencyConditions": [
 							"Succeeded"
 						]
@@ -137,11 +45,78 @@
 				],
 				"userProperties": [],
 				"typeProperties": {
-					"variableName": "start",
-					"value": {
-						"value": "@formatDateTime(convertFromUtc(activity('ingest_DimProductCategory').output.executionDetails[0].start, 'E. South America Standard Time'),'yyyy-MM-dd hh:mm')",
+					"items": {
+						"value": "@activity('Lookup1').output.value",
 						"type": "Expression"
-					}
+					},
+					"isSequential": false,
+					"activities": [
+						{
+							"name": "Copy data1",
+							"type": "Copy",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "SqlServerSource",
+									"queryTimeout": "02:00:00",
+									"partitionOption": "None"
+								},
+								"sink": {
+									"type": "ParquetSink",
+									"storeSettings": {
+										"type": "AzureBlobFSWriteSettings"
+									},
+									"formatSettings": {
+										"type": "ParquetWriteSettings"
+									}
+								},
+								"enableStaging": false,
+								"translator": {
+									"type": "TabularTranslator",
+									"typeConversion": true,
+									"typeConversionSettings": {
+										"allowDataTruncation": true,
+										"treatBooleanAsNumber": false
+									}
+								}
+							},
+							"inputs": [
+								{
+									"referenceName": "ds_sqldb",
+									"type": "DatasetReference",
+									"parameters": {
+										"schema": "dbo",
+										"tbName": {
+											"value": "@item().tabelas",
+											"type": "Expression"
+										}
+									}
+								}
+							],
+							"outputs": [
+								{
+									"referenceName": "ds_adls_parquet",
+									"type": "DatasetReference",
+									"parameters": {
+										"container": "bronze",
+										"path": "AdventureWorks/full/dbo",
+										"fileName": {
+											"value": "@item().tabelas",
+											"type": "Expression"
+										}
+									}
+								}
+							]
+						}
+					]
 				}
 			}
 		],
