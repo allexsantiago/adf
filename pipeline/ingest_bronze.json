@@ -125,7 +125,7 @@
 				]
 			},
 			{
-				"name": "Stored procedure1",
+				"name": "pr_update_waterMark",
 				"type": "SqlServerStoredProcedure",
 				"dependsOn": [
 					{
