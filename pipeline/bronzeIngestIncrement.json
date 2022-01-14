@@ -152,9 +152,9 @@
 										},
 										"type": "String"
 									},
-									"adlsLayer": {
-										"value": "bronze",
-										"type": "String"
+									"idadlsLayer": {
+										"value": "1",
+										"type": "Int32"
 									},
 									"ingestedRows": {
 										"value": {
