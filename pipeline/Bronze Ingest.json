@@ -1,9 +1,9 @@
 {
-	"name": "ingest_bronze",
+	"name": "Bronze Ingest",
 	"properties": {
 		"activities": [
 			{
-				"name": "Lookup1",
+				"name": "lk_tables",
 				"type": "Lookup",
 				"dependsOn": [],
 				"policy": {
@@ -33,11 +33,11 @@
 				}
 			},
 			{
-				"name": "ForEach1",
+				"name": "ForEach",
 				"type": "ForEach",
 				"dependsOn": [
 					{
-						"activity": "Lookup1",
+						"activity": "lk_tables",
 						"dependencyConditions": [
 							"Succeeded"
 						]
@@ -124,7 +124,7 @@
 							]
 						},
 						{
-							"name": "Stored procedure1",
+							"name": "pr_update_waterMark",
 							"type": "SqlServerStoredProcedure",
 							"dependsOn": [
 								{
@@ -219,7 +219,7 @@
 			}
 		},
 		"folder": {
-			"name": "Bronze Ingest"
+			"name": "Bronze Ingest Full"
 		},
 		"annotations": []
 	}
