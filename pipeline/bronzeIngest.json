@@ -1,9 +1,9 @@
 {
-	"name": "Bronze Ingest",
+	"name": "bronzeIngest",
 	"properties": {
 		"activities": [
 			{
-				"name": "lk_tables",
+				"name": "lk_tables_full",
 				"type": "Lookup",
 				"dependsOn": [],
 				"policy": {
@@ -17,7 +17,7 @@
 				"typeProperties": {
 					"source": {
 						"type": "SqlServerSource",
-						"sqlReaderQuery": "select a.tableName\n\t  ,a.tableSchema\n\t  ,b.ingestType\nfrom controller.ingestTables a (nolock)\njoin controller.ingestType   b (nolock) on a.idIngestType = b.idIngestType",
+						"sqlReaderQuery": "select a.tableName\n\t  ,a.tableSchema\n\t  ,b.ingestType\nfrom controller.ingestTables a (nolock)\njoin controller.ingestType   b (nolock) on a.idIngestType = b.idIngestType\nwhere 1 = 1\nand b.idIngestType = 1",
 						"queryTimeout": "02:00:00",
 						"partitionOption": "None"
 					},
@@ -37,7 +37,7 @@
 				"type": "ForEach",
 				"dependsOn": [
 					{
-						"activity": "lk_tables",
+						"activity": "lk_tables_full",
 						"dependencyConditions": [
 							"Succeeded"
 						]
@@ -46,7 +46,7 @@
 				"userProperties": [],
 				"typeProperties": {
 					"items": {
-						"value": "@activity('Lookup1').output.value",
+						"value": "@activity('lk_tables_full').output.value",
 						"type": "Expression"
 					},
 					"isSequential": false,
