@@ -1,5 +1,5 @@
 {
-	"name": "ingest_bronze_copy1",
+	"name": "ingest_bronze",
 	"properties": {
 		"activities": [
 			{
@@ -17,7 +17,7 @@
 				"typeProperties": {
 					"source": {
 						"type": "SqlServerSource",
-						"sqlReaderQuery": "select distinct tabelas from controller.tabelas",
+						"sqlReaderQuery": "select a.tableName\n\t  ,a.tableSchema\n\t  ,b.ingestType\nfrom controller.ingestTables a (nolock)\njoin controller.ingestType   b (nolock) on a.idIngestType = b.idIngestType",
 						"queryTimeout": "02:00:00",
 						"partitionOption": "None"
 					},
@@ -52,7 +52,8 @@
 					"isSequential": false,
 					"activities": [
 						{
-							"name": "Copy data1",
+							"name": "bronzeIngestFull",
+							"description": "Ingestão full na camada bronze",
 							"type": "Copy",
 							"dependsOn": [],
 							"policy": {
@@ -93,9 +94,12 @@
 									"referenceName": "ds_sqldb",
 									"type": "DatasetReference",
 									"parameters": {
-										"schema": "dbo",
+										"schema": {
+											"value": "@item().tableSchema",
+											"type": "Expression"
+										},
 										"tbName": {
-											"value": "@item().tabelas",
+											"value": "@item().tableName",
 											"type": "Expression"
 										}
 									}
@@ -107,14 +111,103 @@
 									"type": "DatasetReference",
 									"parameters": {
 										"container": "bronze",
-										"path": "AdventureWorks/full/dbo",
+										"path": {
+											"value": "AdventureWorks/full/@{item().tableSchema}",
+											"type": "Expression"
+										},
 										"fileName": {
-											"value": "@item().tabelas",
+											"value": "@item().tableName",
 											"type": "Expression"
 										}
 									}
 								}
 							]
+						},
+						{
+							"name": "Stored procedure1",
+							"type": "SqlServerStoredProcedure",
+							"dependsOn": [
+								{
+									"activity": "bronzeIngestFull",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"storedProcedureName": "[controller].[pr_update_waterMark]",
+								"storedProcedureParameters": {
+									"adfPipeline": {
+										"value": {
+											"value": "@pipeline().Pipeline",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"adlsLayer": {
+										"value": "bronze",
+										"type": "String"
+									},
+									"ingestedRows": {
+										"value": {
+											"value": "@activity('bronzeIngestFull').output.rowsCopied",
+											"type": "Expression"
+										},
+										"type": "Int32"
+									},
+									"ingestEndDateTime": {
+										"value": {
+											"value": "@formatDateTime(addSeconds(convertFromUtc(activity('bronzeIngestFull').output.executionDetails[0].start, 'E. South America Standard Time'),activity('bronzeIngestFull').output.copyDuration), 'yyyy-MM-dd hh:mm:ss')",
+											"type": "Expression"
+										},
+										"type": "DateTime"
+									},
+									"ingestStartDateTime": {
+										"value": {
+											"value": "@formatDateTime(convertFromUtc(activity('bronzeIngestFull').output.executionDetails[0].start, 'E. South America Standard Time'),'yyyy-MM-dd hh:mm:ss')",
+											"type": "Expression"
+										},
+										"type": "DateTime"
+									},
+									"ingestType": {
+										"value": {
+											"value": "@item().ingestType",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"mostRecentDateTime": {
+										"value": null,
+										"type": "DateTime"
+									},
+									"tableName": {
+										"value": {
+											"value": "@item().tableName",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"tableSchema": {
+										"value": {
+											"value": "@item().tableSchema",
+											"type": "Expression"
+										},
+										"type": "String"
+									}
+								}
+							},
+							"linkedServiceName": {
+								"referenceName": "SqlServerLocalAlex",
+								"type": "LinkedServiceReference"
+							}
 						}
 					]
 				}
@@ -126,7 +219,7 @@
 			}
 		},
 		"folder": {
-			"name": "Ingest Full/AdventureWorks"
+			"name": "Bronze Ingest"
 		},
 		"annotations": []
 	}
