@@ -194,13 +194,6 @@
 											"type": "Expression"
 										},
 										"type": "String"
-									},
-									"tableSchema": {
-										"value": {
-											"value": "@item().tableSchema",
-											"type": "Expression"
-										},
-										"type": "String"
 									}
 								}
 							},
