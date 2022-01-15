@@ -3,9 +3,16 @@
 	"properties": {
 		"activities": [
 			{
-				"name": "lk_tables_full",
+				"name": "lk_table_increment",
 				"type": "Lookup",
-				"dependsOn": [],
+				"dependsOn": [
+					{
+						"activity": "databr",
+						"dependencyConditions": [
+							"Completed"
+						]
+					}
+				],
 				"policy": {
 					"timeout": "7.00:00:00",
 					"retry": 0,
@@ -17,7 +24,7 @@
 				"typeProperties": {
 					"source": {
 						"type": "SqlServerSource",
-						"sqlReaderQuery": "select a.idTable\n\t  ,a.tableName\n\t  ,a.tableSchema\n\t  ,b.idIngestType\nfrom controller.ingestTable a (nolock)\njoin controller.ingestType  b (nolock) on a.idIngestType = b.idIngestType\nwhere 1 = 1\nand b.idIngestType = 1",
+						"sqlReaderQuery": "select a.idTable\n\t  ,a.tableName\n\t  ,a.tableSchema\n\t  ,b.idIngestType\n\t  ,a.columnMostRecentDateTime\n\t  ,max(c.mostRecentDateTime) as mostRecentDateTime\nfrom controller.ingestTable a (nolock)\njoin controller.ingestType  b (nolock) on a.idIngestType = b.idIngestType\nleft join controller.waterMark c (nolock) on a.idTable = c.idTable\nwhere 1 = 1\nand b.idIngestType = 2\ngroup by a.idTable\n\t    ,a.tableName\n\t    ,a.tableSchema\n\t    ,b.idIngestType\n\t\t,a.columnMostRecentDateTime",
 						"queryTimeout": "02:00:00",
 						"partitionOption": "None"
 					},
@@ -37,7 +44,7 @@
 				"type": "ForEach",
 				"dependsOn": [
 					{
-						"activity": "lk_tables_full",
+						"activity": "lk_table_increment",
 						"dependencyConditions": [
 							"Succeeded"
 						]
@@ -46,14 +53,14 @@
 				"userProperties": [],
 				"typeProperties": {
 					"items": {
-						"value": "@activity('lk_tables_full').output.value",
+						"value": "@activity('lk_table_increment').output.value",
 						"type": "Expression"
 					},
 					"isSequential": false,
 					"activities": [
 						{
-							"name": "bronzeIngestFull",
-							"description": "Ingestão full na camada bronze",
+							"name": "bronzeIngestIncrement",
+							"description": "Ingestão incremental na camada bronze",
 							"type": "Copy",
 							"dependsOn": [],
 							"policy": {
@@ -67,6 +74,10 @@
 							"typeProperties": {
 								"source": {
 									"type": "SqlServerSource",
+									"sqlReaderQuery": {
+										"value": "select * from @{item().tableName} where @{item().columnMostRecentDateTime} > '@{if(empty(item().mostRecentDateTime),'1900-01-01', item().mostRecentDateTime)}'",
+										"type": "Expression"
+									},
 									"queryTimeout": "02:00:00",
 									"partitionOption": "None"
 								},
@@ -112,11 +123,11 @@
 									"parameters": {
 										"container": "bronze",
 										"path": {
-											"value": "AdventureWorks/full/@{item().tableSchema}",
+											"value": "increment/@{formatDateTime(variables('databr'),'yyyy-MM-dd')}/@{item().tableSchema}/@{item().tableName}/",
 											"type": "Expression"
 										},
 										"fileName": {
-											"value": "@item().tableName",
+											"value": "@{item().tableName}-@{variables('databr')}.parquet",
 											"type": "Expression"
 										}
 									}
@@ -128,7 +139,7 @@
 							"type": "SqlServerStoredProcedure",
 							"dependsOn": [
 								{
-									"activity": "bronzeIngestFull",
+									"activity": "lk_mostRecentDateTime",
 									"dependencyConditions": [
 										"Succeeded"
 									]
@@ -158,21 +169,21 @@
 									},
 									"ingestedRows": {
 										"value": {
-											"value": "@activity('bronzeIngestFull').output.rowsCopied",
+											"value": "@activity('bronzeIngestIncrement').output.rowsCopied",
 											"type": "Expression"
 										},
 										"type": "Int32"
 									},
 									"ingestEndDateTime": {
 										"value": {
-											"value": "@formatDateTime(addSeconds(convertFromUtc(activity('bronzeIngestFull').output.executionDetails[0].start, 'E. South America Standard Time'),activity('bronzeIngestFull').output.copyDuration), 'yyyy-MM-dd hh:mm:ss')",
+											"value": "@formatDateTime(addSeconds(convertFromUtc(activity('bronzeIngestIncrement').output.executionDetails[0].start, 'E. South America Standard Time'),activity('bronzeIngestIncrement').output.copyDuration), 'yyyy-MM-dd hh:mm:ss')",
 											"type": "Expression"
 										},
 										"type": "DateTime"
 									},
 									"ingestStartDateTime": {
 										"value": {
-											"value": "@formatDateTime(convertFromUtc(activity('bronzeIngestFull').output.executionDetails[0].start, 'E. South America Standard Time'),'yyyy-MM-dd hh:mm:ss')",
+											"value": "@formatDateTime(convertFromUtc(activity('bronzeIngestIncrement').output.executionDetails[0].start, 'E. South America Standard Time'),'yyyy-MM-dd hh:mm:ss')",
 											"type": "Expression"
 										},
 										"type": "DateTime"
@@ -185,7 +196,10 @@
 										"type": "Int32"
 									},
 									"mostRecentDateTime": {
-										"value": null,
+										"value": {
+											"value": "@activity('lk_mostRecentDateTime').output.firstRow.MostRecentDateTime",
+											"type": "Expression"
+										},
 										"type": "DateTime"
 									},
 									"idTable": {
@@ -201,13 +215,71 @@
 								"referenceName": "SqlServerLocalAlex",
 								"type": "LinkedServiceReference"
 							}
+						},
+						{
+							"name": "lk_mostRecentDateTime",
+							"type": "Lookup",
+							"dependsOn": [
+								{
+									"activity": "bronzeIngestIncrement",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "SqlServerSource",
+									"sqlReaderQuery": {
+										"value": "select max(@{item().columnMostRecentDateTime}) as MostRecentDateTime from @{item().tableName}",
+										"type": "Expression"
+									},
+									"queryTimeout": "02:00:00",
+									"partitionOption": "None"
+								},
+								"dataset": {
+									"referenceName": "ds_sqldb",
+									"type": "DatasetReference",
+									"parameters": {
+										"schema": {
+											"value": "@item().tableSchema",
+											"type": "Expression"
+										},
+										"tbName": {
+											"value": "@item().tableName",
+											"type": "Expression"
+										}
+									}
+								}
+							}
 						}
 					]
+				}
+			},
+			{
+				"name": "databr",
+				"type": "SetVariable",
+				"dependsOn": [],
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "databr",
+					"value": {
+						"value": "@formatDateTime(convertFromUtc(utcNow(), 'E. South America Standard Time'),'yyyy-MM-ddTHH:mm:ss')",
+						"type": "Expression"
+					}
 				}
 			}
 		],
 		"variables": {
-			"start": {
+			"databr": {
 				"type": "String"
 			}
 		},

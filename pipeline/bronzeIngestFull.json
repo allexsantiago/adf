@@ -112,11 +112,11 @@
 									"parameters": {
 										"container": "bronze",
 										"path": {
-											"value": "AdventureWorks/full/@{item().tableSchema}",
+											"value": "full/@{item().tableSchema}",
 											"type": "Expression"
 										},
 										"fileName": {
-											"value": "@item().tableName",
+											"value": "@{item().tableName}.parquet",
 											"type": "Expression"
 										}
 									}
