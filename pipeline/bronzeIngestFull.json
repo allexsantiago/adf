@@ -112,7 +112,7 @@
 									"parameters": {
 										"container": "bronze",
 										"path": {
-											"value": "full/@{item().tableSchema}",
+											"value": "full/@{item().tableSchema}/@{item().tableName}",
 											"type": "Expression"
 										},
 										"fileName": {
@@ -206,11 +206,6 @@
 				}
 			}
 		],
-		"variables": {
-			"start": {
-				"type": "String"
-			}
-		},
 		"folder": {
 			"name": "Bronze Ingest"
 		},
