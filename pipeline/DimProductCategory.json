@@ -1,0 +1,9 @@
+{
+	"name": "DimProductCategory",
+	"properties": {
+		"folder": {
+			"name": "Silver Ingest/AdventureWorksDW"
+		},
+		"annotations": []
+	}
+}
